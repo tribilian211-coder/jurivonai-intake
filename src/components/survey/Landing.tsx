@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Mail, Scale, Clock, Mic, ArrowRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,8 @@ interface LandingProps {
   onStart: (responseId: string, answers: Record<string, string>) => void;
 }
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export function Landing({ onStart }: LandingProps) {
   const [email, setEmail] = useState("");
   const [practiceArea, setPracticeArea] = useState("");
@@ -20,14 +22,18 @@ export function Landing({ onStart }: LandingProps) {
   const [yearsOfPractice, setYearsOfPractice] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  // Check for an existing in-progress response (localStorage resume)
+  // Lead row ID — created the moment the lawyer types a valid email.
+  // All subsequent field updates PATCH this row in real time, so admin sees
+  // who landed (and what they entered) even if they never click Begin.
+  const [leadId, setLeadId] = useState<string | null>(null);
+  const leadIdRef = useRef<string | null>(null);
+  leadIdRef.current = leadId;
+
+  // Restore lead from localStorage on mount (so a returning user keeps their row)
   useEffect(() => {
     const savedId = localStorage.getItem("jurivon_response_id");
-    if (savedId) {
-      // Offer resume — but don't force it; let user start fresh if they want
-      // We do this by pre-filling nothing, just showing a banner via toast once
-      void checkResume(savedId);
-    }
+    if (!savedId) return;
+    void checkResume(savedId);
   }, []);
 
   const checkResume = async (id: string) => {
@@ -38,12 +44,34 @@ export function Landing({ onStart }: LandingProps) {
         return;
       }
       const data = await res.json();
-      if (data.response && !data.response.completed) {
+      if (!data.response) return;
+
+      // Pre-fill fields from saved lead so user doesn't retype
+      const r = data.response;
+      setEmail(r.email || "");
+      setPracticeArea(r.practiceArea || "");
+      setCity(r.city || "");
+      setYearsOfPractice(r.yearsOfPractice || "");
+
+      setLeadId(r.id);
+      leadIdRef.current = r.id;
+
+      if (r.completed) {
+        // Already done — show the completion screen
+        // (handled by parent via onStart with empty answers; parent will route to complete)
+        return;
+      }
+      if (r.started) {
+        // They'd started the survey — offer resume
         toast.info(`Welcome back — picking up where you left off.`, {
-          duration: 3000,
+          duration: 4000,
           action: {
-            label: "Resume",
-            onClick: () => onStart(data.response.id, data.response.answers || {}),
+            label: "Resume survey",
+            onClick: () => {
+              let answers: Record<string, string> = {};
+              try { answers = JSON.parse(r.answers || "{}"); } catch { answers = {}; }
+              onStart(r.id, answers);
+            },
           },
         });
       }
@@ -52,32 +80,100 @@ export function Landing({ onStart }: LandingProps) {
     }
   };
 
+  // ─── Lead capture: debounced create/update on email + field changes ──────
+  // Fires 1 second after the user stops editing, only if email is valid.
+  // This is what tells admin "this lawyer opened the form" before they click Begin.
+  useEffect(() => {
+    if (!email.trim() || !EMAIL_RE.test(email)) return;
+
+    const t = setTimeout(() => {
+      void saveLead();
+    }, 1000);
+    return () => clearTimeout(t);
+  }, [email, practiceArea, city, yearsOfPractice]);
+
+  const saveLead = async () => {
+    // Silent — never disrupt the user with errors from lead capture
+    try {
+      if (leadIdRef.current) {
+        // PATCH existing lead with latest field values
+        await fetch(`/api/responses/${leadIdRef.current}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            practiceArea: practiceArea || null,
+            city: city || null,
+            yearsOfPractice: yearsOfPractice || null,
+          }),
+        });
+      } else {
+        // Create new lead (started: false)
+        const res = await fetch("/api/responses", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email,
+            practiceArea: practiceArea || null,
+            city: city || null,
+            yearsOfPractice: yearsOfPractice || null,
+            started: false,
+          }),
+        });
+        const data = await res.json();
+        if (data.response) {
+          setLeadId(data.response.id);
+          leadIdRef.current = data.response.id;
+          localStorage.setItem("jurivon_response_id", data.response.id);
+        }
+      }
+    } catch {
+      // silent fail — lead capture is best-effort
+    }
+  };
+
   const submit = async () => {
     if (!email.trim() || !practiceArea) {
       toast.error("Please add your email and practice area to begin.");
       return;
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (!EMAIL_RE.test(email)) {
       toast.error("That email doesn't look right.");
       return;
     }
     setSubmitting(true);
     try {
-      const res = await fetch("/api/responses", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, practiceArea, city, yearsOfPractice }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed");
-      localStorage.setItem("jurivon_response_id", data.response.id);
-      let answers: Record<string, string> = {};
-      try {
-        answers = JSON.parse(data.response.answers || "{}");
-      } catch {
-        answers = {};
+      // If we already created a lead, mark it started + ensure all fields saved
+      if (leadIdRef.current) {
+        await fetch(`/api/responses/${leadIdRef.current}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            started: true,
+            practiceArea,
+            city: city || null,
+            yearsOfPractice: yearsOfPractice || null,
+          }),
+        });
+        onStart(leadIdRef.current, {});
+      } else {
+        // Fallback: no lead was created yet (e.g. user clicked Begin very fast)
+        // Create + start in one call
+        const res = await fetch("/api/responses", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email,
+            practiceArea,
+            city,
+            yearsOfPractice,
+            started: true,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed");
+        localStorage.setItem("jurivon_response_id", data.response.id);
+        onStart(data.response.id, {});
       }
-      onStart(data.response.id, answers);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Something went wrong");
     } finally {
@@ -234,7 +330,8 @@ export function Landing({ onStart }: LandingProps) {
 
       <footer className="border-t bg-white mt-auto">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 text-xs text-muted-foreground text-center">
-          JurivonAI · Building legal AI for Pakistani lawyers · <a href="#admin" className="underline hover:text-stone-700">Internal</a>
+          JurivonAI · Building legal AI for Pakistani lawyers ·{" "}
+          <a href="#admin" className="underline hover:text-stone-700">Internal</a>
         </div>
       </footer>
     </div>

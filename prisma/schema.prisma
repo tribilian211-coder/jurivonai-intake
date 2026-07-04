@@ -16,10 +16,15 @@ datasource db {
 model Response {
   id              String    @id @default(cuid())
   email           String
-  practiceArea    String
+  practiceArea    String?
   city            String?
   yearsOfPractice String?
   barNumber       String?
+
+  // Lifecycle: opened form (false) -> clicked "Begin interview" (true) -> completed (true)
+  started         Boolean   @default(false)
+  completed       Boolean   @default(false)
+  completedAt     DateTime?
 
   // JSON-stringified map of questionId -> answer text
   answers         String    @default("{}")
@@ -27,8 +32,6 @@ model Response {
   // Resume support: track where they stopped
   currentSection  Int       @default(1)
   currentQuestion Int       @default(0)
-  completed       Boolean   @default(false)
-  completedAt     DateTime?
 
   // Admin use
   flagged         Boolean   @default(false)
@@ -40,5 +43,6 @@ model Response {
   @@index([email])
   @@index([practiceArea])
   @@index([completed])
+  @@index([started])
   @@index([createdAt])
 }

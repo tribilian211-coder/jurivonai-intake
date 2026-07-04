@@ -1,40 +1,65 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db, withWriteRetry } from "@/lib/db";
 import { getVisibleQuestions } from "@/lib/questions";
 import { isAdminAuthorized } from "@/lib/admin/auth";
 
-// POST /api/responses — create a new response (start survey)
+// POST /api/responses — create or update a response.
+// Accepts ANY subset of fields — used for two flows:
+//   1. Lead capture: lawyer just typed their email; we create a row with
+//      started=false so admin sees them land even if they never click Begin.
+//   2. Begin interview: lawyer clicked Begin; we mark started=true.
+// If a response already exists for this email, we PATCH it instead of
+// creating a duplicate (idempotent upsert by email).
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { email, practiceArea, city, yearsOfPractice, barNumber } = body;
+    const email = (body.email as string | undefined)?.toLowerCase().trim();
+    const { practiceArea, city, yearsOfPractice, barNumber, started } = body;
 
-    if (!email || !practiceArea) {
+    // Email is the only required field for creating a lead row
+    if (!email) {
       return NextResponse.json(
-        { error: "Email and practice area are required." },
+        { error: "Email is required." },
         { status: 400 }
       );
     }
 
-    // Check if a response already exists for this email — if so, resume it
+    // Find existing by email — if found, PATCH instead of duplicating.
+    // This makes the endpoint idempotent: same email always returns same row.
     const existing = await db.response.findFirst({
-      where: { email: email.toLowerCase().trim() },
+      where: { email },
       orderBy: { createdAt: "desc" },
     });
 
     if (existing) {
-      return NextResponse.json({ response: existing, resumed: true });
+      const update: Record<string, unknown> = { updatedAt: new Date() };
+      // Only update fields that were actually provided in the request body
+      if (practiceArea !== undefined) update.practiceArea = practiceArea || null;
+      if (city !== undefined) update.city = city || null;
+      if (yearsOfPractice !== undefined) update.yearsOfPractice = yearsOfPractice || null;
+      if (barNumber !== undefined) update.barNumber = barNumber || null;
+      // started only goes true→true (we never downgrade a started response)
+      if (started === true && !existing.started) update.started = true;
+
+      const updated = await withWriteRetry(() =>
+        db.response.update({ where: { id: existing.id }, data: update })
+      );
+      return NextResponse.json({ response: updated, resumed: true });
     }
 
-    const response = await db.response.create({
-      data: {
-        email: email.toLowerCase().trim(),
-        practiceArea,
-        city: city || null,
-        yearsOfPractice: yearsOfPractice || null,
-        barNumber: barNumber || null,
-      },
-    });
+    // Create new row (lead or started, depending on `started` flag)
+    const response = await withWriteRetry(() =>
+      db.response.create({
+        data: {
+          email,
+          practiceArea: practiceArea || null,
+          city: city || null,
+          yearsOfPractice: yearsOfPractice || null,
+          barNumber: barNumber || null,
+          started: started === true,
+        },
+      })
+    );
 
     return NextResponse.json({ response, resumed: false });
   } catch (err) {
@@ -56,12 +81,15 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const practiceArea = searchParams.get("practiceArea");
   const completed = searchParams.get("completed");
+  const started = searchParams.get("started");
   const search = searchParams.get("search");
 
   const where: Record<string, unknown> = {};
   if (practiceArea && practiceArea !== "all") where.practiceArea = practiceArea;
   if (completed === "true") where.completed = true;
   if (completed === "false") where.completed = false;
+  if (started === "true") where.started = true;
+  if (started === "false") where.started = false;
 
   const responses = await db.response.findMany({
     where,
@@ -77,8 +105,11 @@ export async function GET(req: NextRequest) {
       answers = {};
     }
     const visible = getVisibleQuestions(answers);
-    const answered = visible.filter((q) => answers[q.id] && answers[q.id].trim().length > 0).length;
-    const completionPct = visible.length > 0 ? Math.round((answered / visible.length) * 100) : 0;
+    const answered = visible.filter(
+      (q) => answers[q.id] && answers[q.id].trim().length > 0
+    ).length;
+    const completionPct =
+      visible.length > 0 ? Math.round((answered / visible.length) * 100) : 0;
 
     if (search) {
       const haystack = Object.values(answers).join(" ").toLowerCase();
