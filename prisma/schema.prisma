@@ -1,0 +1,44 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// A single lawyer's survey response. One row per lawyer.
+// answers is a JSON string: { "q1": "their answer...", "q2": "...", ... }
+// We use a JSON string because SQLite doesn't natively support arrays/maps.
+model Response {
+  id              String    @id @default(cuid())
+  email           String
+  practiceArea    String
+  city            String?
+  yearsOfPractice String?
+  barNumber       String?
+
+  // JSON-stringified map of questionId -> answer text
+  answers         String    @default("{}")
+
+  // Resume support: track where they stopped
+  currentSection  Int       @default(1)
+  currentQuestion Int       @default(0)
+  completed       Boolean   @default(false)
+  completedAt     DateTime?
+
+  // Admin use
+  flagged         Boolean   @default(false)
+  notes           String?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([email])
+  @@index([practiceArea])
+  @@index([completed])
+  @@index([createdAt])
+}
