@@ -34,18 +34,15 @@ export function SurveyApp({
   const visibleQuestions = useMemo(() => getVisibleQuestions(answers), [answers]);
   const currentQuestion: Question | undefined = visibleQuestions[currentIndex];
 
-  // Keep draft synced when question changes
   useEffect(() => {
     if (currentQuestion) {
       setDraft(answers[currentQuestion.id] ?? "");
     }
   }, [currentQuestion, answers]);
 
-  // Auto-save draft after 1s of inactivity (debounced)
   useEffect(() => {
     if (!currentQuestion) return;
     const t = setTimeout(() => {
-      // Only auto-save if there's actually a change
       if (draft !== (answers[currentQuestion.id] ?? "")) {
         void saveAnswer(draft, false);
       }
@@ -83,7 +80,6 @@ export function SurveyApp({
 
   const goNext = useCallback(() => {
     if (!currentQuestion) return;
-    // Save current answer (forced) then advance
     void saveAnswer(draft, false);
     if (currentIndex < visibleQuestions.length - 1) {
       setCurrentIndex((i) => i + 1);
@@ -125,9 +121,7 @@ export function SurveyApp({
     }
   }, [responseId, onComplete]);
 
-  if (!currentQuestion) {
-    return null;
-  }
+  if (!currentQuestion) return null;
 
   const progressPct =
     visibleQuestions.length > 0
@@ -136,53 +130,67 @@ export function SurveyApp({
 
   const isLast = currentIndex === visibleQuestions.length - 1;
   const charCount = draft.trim().length;
-  const meetsMin = currentQuestion.minLength
-    ? charCount >= currentQuestion.minLength
-    : true;
+  const meetsMin = currentQuestion.minLength ? charCount >= currentQuestion.minLength : true;
 
   return (
-    <div className="min-h-screen flex flex-col bg-stone-50">
-      {/* Top bar: progress + exit */}
-      <header className="border-b bg-white sticky top-0 z-10">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-4">
-          <div className="flex-1">
-            <Progress value={progressPct} className="h-1.5" />
+    <div className="min-h-screen flex flex-col">
+      {/* macOS-style window chrome top bar */}
+      <header className="sticky top-0 z-30 glass border-b border-white/40">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-2.5 flex items-center gap-3">
+          {/* Traffic lights */}
+          <div className="flex items-center gap-2 mr-2">
+            <span className="traffic-light traffic-red" />
+            <span className="traffic-light traffic-yellow" />
+            <span className="traffic-light traffic-green" />
           </div>
-          <span className="text-xs text-muted-foreground whitespace-nowrap tabular-nums">
-            {currentIndex + 1} / {visibleQuestions.length}
+          <div className="flex-1 max-w-md mx-auto">
+            <Progress value={progressPct} className="h-1 bg-[#ECECEC]" />
+          </div>
+          <span className="text-[11px] text-muted-foreground whitespace-nowrap tabular-nums font-medium">
+            {currentIndex + 1}/{visibleQuestions.length}
           </span>
-          <Button variant="ghost" size="sm" onClick={onExit} className="text-muted-foreground">
-            <Flag className="h-3.5 w-3.5 mr-1" />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onExit}
+            className="text-muted-foreground hover:text-foreground text-xs h-7 px-2"
+          >
+            <Flag className="h-3 w-3 mr-1" />
             Save & exit
           </Button>
         </div>
       </header>
 
       <main className="flex-1 flex flex-col">
-        <div className="max-w-3xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12 flex-1">
+        <div className="max-w-3xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-14 flex-1 animate-fade-in" key={currentQuestion.id}>
           {/* Section badge */}
-          <div className="mb-4 flex items-center gap-2">
-            <Badge variant="outline" className="rounded-full px-3 py-1 border-stone-300 bg-stone-100 text-stone-700">
+          <div className="mb-5 flex items-center gap-2">
+            <Badge
+              variant="outline"
+              className="rounded-full px-3 py-1 border-[#D2D2D7] bg-white/70 text-[11px] font-medium"
+            >
               Section {currentQuestion.section} — {currentQuestion.sectionTitle}
             </Badge>
           </div>
 
           {/* Question */}
-          <h1 className="text-2xl sm:text-3xl font-serif tracking-tight text-stone-900 leading-snug mb-2">
+          <h1 className="text-[1.6rem] sm:text-[2rem] font-semibold tracking-[-0.02em] text-foreground mb-2 leading-tight">
             {currentQuestion.prompt}
           </h1>
           {currentQuestion.hint && (
-            <p className="text-sm text-muted-foreground italic mb-6">{currentQuestion.hint}</p>
+            <p className="text-sm text-muted-foreground italic mb-7 leading-relaxed">
+              {currentQuestion.hint}
+            </p>
           )}
 
-          {/* Answer area */}
-          <div className="space-y-3">
+          {/* Answer area — glass card */}
+          <div className="glass-strong rounded-[22px] shadow-macos-md p-5 sm:p-6 space-y-3">
             <Textarea
               autoFocus
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               placeholder="Type your answer, or use voice input below…"
-              className="min-h-[180px] sm:min-h-[220px] text-base leading-relaxed resize-y border-stone-200 focus-visible:ring-stone-400"
+              className="min-h-[180px] sm:min-h-[220px] text-[15px] leading-relaxed resize-y border-transparent bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 p-0"
               onKeyDown={(e) => {
                 if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
                   e.preventDefault();
@@ -191,51 +199,74 @@ export function SurveyApp({
               }}
             />
 
-            <div className="flex flex-wrap items-center gap-3">
-              <VoiceRecorder
-                initialText={draft}
-                onTranscript={(text) => setDraft(text)}
-                lang="en-PK"
-              />
-              <span className="text-xs text-muted-foreground ml-auto tabular-nums">
+            <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-[#D2D2D7]/60">
+              <VoiceRecorder initialText={draft} onTranscript={(text) => setDraft(text)} lang="en-PK" />
+              <span className="text-[11px] text-muted-foreground ml-auto tabular-nums">
                 {charCount} chars
                 {!meetsMin && currentQuestion.minLength ? (
-                  <span className="text-amber-600 ml-2">· aim for {currentQuestion.minLength}+</span>
+                  <span className="text-[#FF9F0A] ml-2">· aim for {currentQuestion.minLength}+</span>
                 ) : null}
               </span>
             </div>
           </div>
 
           {/* Save status */}
-          <div className="mt-2 h-4 text-xs text-muted-foreground">
-            {saving
-              ? "Saving…"
-              : savedAt
-                ? `Saved · ${savedAt.toLocaleTimeString()}`
-                : "Auto-saves as you type"}
+          <div className="mt-3 h-4 text-[11px] text-muted-foreground flex items-center gap-2">
+            {saving ? (
+              <>
+                <span className="h-1.5 w-1.5 rounded-full bg-[#FF9F0A] animate-soft-pulse" />
+                Saving…
+              </>
+            ) : savedAt ? (
+              <>
+                <span className="h-1.5 w-1.5 rounded-full bg-[#30D158]" />
+                Saved · {savedAt.toLocaleTimeString()}
+              </>
+            ) : (
+              <>
+                <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
+                Auto-saves as you type
+              </>
+            )}
           </div>
         </div>
 
-        {/* Bottom nav */}
-        <footer className="border-t bg-white">
-          <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-2">
-            <Button variant="ghost" onClick={goPrev} disabled={currentIndex === 0}>
+        {/* Bottom nav — floating glass bar */}
+        <footer className="sticky bottom-0 z-20 glass border-t border-white/40">
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-2">
+            <Button
+              variant="ghost"
+              onClick={goPrev}
+              disabled={currentIndex === 0}
+              className="rounded-xl press-scale"
+            >
               <ArrowLeft className="h-4 w-4 mr-1" />
               Back
             </Button>
 
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" onClick={skip} className="text-muted-foreground">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={skip}
+                className="text-muted-foreground rounded-xl press-scale"
+              >
                 <SkipForward className="h-3.5 w-3.5 mr-1" />
                 Skip
               </Button>
               {isLast ? (
-                <Button onClick={goNext} className="bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5">
+                <Button
+                  onClick={goNext}
+                  className="bg-gradient-to-r from-[#30D158] to-[#30D158]/90 hover:from-[#30D158] hover:to-[#30D158] text-white rounded-xl gap-1.5 press-scale shadow-macos-sm"
+                >
                   <Check className="h-4 w-4" />
                   Submit responses
                 </Button>
               ) : (
-                <Button onClick={goNext} className="bg-stone-900 hover:bg-stone-800 text-white gap-1.5">
+                <Button
+                  onClick={goNext}
+                  className="bg-gradient-to-r from-[#0A84FF] to-[#0A84FF]/90 hover:from-[#0A84FF] hover:to-[#0A84FF] text-white rounded-xl gap-1.5 press-scale shadow-macos-sm"
+                >
                   Next
                   <ArrowRight className="h-4 w-4" />
                 </Button>

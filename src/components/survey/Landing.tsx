@@ -1,11 +1,28 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Mail, Scale, Clock, Mic, ArrowRight, Loader2, Download } from "lucide-react";
+import {
+  Mail,
+  Scale,
+  Clock,
+  Mic,
+  ArrowRight,
+  Loader2,
+  Shield,
+  Zap,
+  FileText,
+  TrendingUp,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { PRACTICE_AREAS } from "@/lib/questions";
 import { toast } from "sonner";
 
@@ -22,14 +39,10 @@ export function Landing({ onStart }: LandingProps) {
   const [yearsOfPractice, setYearsOfPractice] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  // Lead row ID — created the moment the lawyer types a valid email.
-  // All subsequent field updates PATCH this row in real time, so admin sees
-  // who landed (and what they entered) even if they never click Begin.
   const [leadId, setLeadId] = useState<string | null>(null);
   const leadIdRef = useRef<string | null>(null);
   leadIdRef.current = leadId;
 
-  // Restore lead from localStorage on mount (so a returning user keeps their row)
   useEffect(() => {
     const savedId = localStorage.getItem("jurivon_response_id");
     if (!savedId) return;
@@ -46,7 +59,6 @@ export function Landing({ onStart }: LandingProps) {
       const data = await res.json();
       if (!data.response) return;
 
-      // Pre-fill fields from saved lead so user doesn't retype
       const r = data.response;
       setEmail(r.email || "");
       setPracticeArea(r.practiceArea || "");
@@ -56,20 +68,19 @@ export function Landing({ onStart }: LandingProps) {
       setLeadId(r.id);
       leadIdRef.current = r.id;
 
-      if (r.completed) {
-        // Already done — show the completion screen
-        // (handled by parent via onStart with empty answers; parent will route to complete)
-        return;
-      }
+      if (r.completed) return;
       if (r.started) {
-        // They'd started the survey — offer resume
         toast.info(`Welcome back — picking up where you left off.`, {
           duration: 4000,
           action: {
             label: "Resume survey",
             onClick: () => {
               let answers: Record<string, string> = {};
-              try { answers = JSON.parse(r.answers || "{}"); } catch { answers = {}; }
+              try {
+                answers = JSON.parse(r.answers || "{}");
+              } catch {
+                answers = {};
+              }
               onStart(r.id, answers);
             },
           },
@@ -80,12 +91,8 @@ export function Landing({ onStart }: LandingProps) {
     }
   };
 
-  // ─── Lead capture: debounced create/update on email + field changes ──────
-  // Fires 1 second after the user stops editing, only if email is valid.
-  // This is what tells admin "this lawyer opened the form" before they click Begin.
   useEffect(() => {
     if (!email.trim() || !EMAIL_RE.test(email)) return;
-
     const t = setTimeout(() => {
       void saveLead();
     }, 1000);
@@ -93,10 +100,8 @@ export function Landing({ onStart }: LandingProps) {
   }, [email, practiceArea, city, yearsOfPractice]);
 
   const saveLead = async () => {
-    // Silent — never disrupt the user with errors from lead capture
     try {
       if (leadIdRef.current) {
-        // PATCH existing lead with latest field values
         await fetch(`/api/responses/${leadIdRef.current}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -107,7 +112,6 @@ export function Landing({ onStart }: LandingProps) {
           }),
         });
       } else {
-        // Create new lead (started: false)
         const res = await fetch("/api/responses", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -127,7 +131,7 @@ export function Landing({ onStart }: LandingProps) {
         }
       }
     } catch {
-      // silent fail — lead capture is best-effort
+      // silent
     }
   };
 
@@ -142,7 +146,6 @@ export function Landing({ onStart }: LandingProps) {
     }
     setSubmitting(true);
     try {
-      // If we already created a lead, mark it started + ensure all fields saved
       if (leadIdRef.current) {
         await fetch(`/api/responses/${leadIdRef.current}`, {
           method: "PATCH",
@@ -156,8 +159,6 @@ export function Landing({ onStart }: LandingProps) {
         });
         onStart(leadIdRef.current, {});
       } else {
-        // Fallback: no lead was created yet (e.g. user clicked Begin very fast)
-        // Create + start in one call
         const res = await fetch("/api/responses", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -182,75 +183,92 @@ export function Landing({ onStart }: LandingProps) {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-stone-50">
-      {/* Header */}
-      <header className="border-b bg-white">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-md bg-stone-900 text-white flex items-center justify-center">
-              <Scale className="h-4 w-4" />
+    <div className="min-h-screen flex flex-col">
+      {/* Top nav bar — glassmorphism */}
+      <header className="sticky top-0 z-30 glass border-b border-white/40">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-[#0A84FF] to-[#BF5AF2] flex items-center justify-center shadow-macos-sm">
+              <Scale className="h-4 w-4 text-white" />
             </div>
             <div>
-              <div className="font-serif text-lg leading-none">JurivonAI</div>
-              <div className="text-[10px] text-muted-foreground uppercase tracking-widest">
+              <div className="font-semibold text-[15px] leading-none tracking-tight">
+                JurivonAI
+              </div>
+              <div className="text-[10px] text-muted-foreground uppercase tracking-[0.15em] mt-0.5">
                 Research intake
               </div>
             </div>
           </div>
+          <a
+            href="#admin"
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-full hover:bg-black/5"
+          >
+            Internal
+          </a>
         </div>
       </header>
 
-      {/* Hero + intake form */}
-      <main className="flex-1 flex flex-col">
-        <section className="max-w-3xl w-full mx-auto px-4 sm:px-6 py-10 sm:py-16">
-          <div className="text-center mb-10">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 text-xs font-medium mb-5">
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-600 animate-pulse" />
-              8-minute lawyer interview · 23 questions · confidential
-            </div>
-
-            <h1 className="font-serif text-4xl sm:text-5xl tracking-tight text-stone-900 mb-4 leading-tight">
-              We're building the legal AI tool<br />Pakistani lawyers actually want.
-            </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-              Tell us what frustrates you about legal research, drafting, and the tools you already use.
-              Your raw, unfiltered answers shape what we build. In return — early access to JurivonAI
-              and a summary of what 50+ lawyers told us.
-            </p>
+      <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-14">
+        {/* Hero */}
+        <div className="text-center mb-10 sm:mb-14 animate-fade-in">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full glass border border-white/60 text-[11px] font-medium text-foreground/80 mb-6 shadow-macos-sm">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#30D158] animate-soft-pulse" />
+            8-minute lawyer interview · 23 questions · confidential
           </div>
 
-          {/* Intake card */}
-          <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-6 sm:p-8">
+          <h1 className="text-[2.25rem] sm:text-5xl lg:text-6xl font-semibold tracking-[-0.02em] text-foreground mb-5 leading-[1.05]">
+            We're building the legal AI tool
+            <br />
+            <span className="text-gradient-blue">Pakistani lawyers actually want.</span>
+          </h1>
+          <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+            Tell us what frustrates you about legal research, drafting, and the tools you
+            already use. Your raw, unfiltered answers shape what we build.
+          </p>
+        </div>
+
+        {/* Bento grid layout — mixed card sizes */}
+        <div className="grid grid-cols-12 gap-3 sm:gap-4 mb-10">
+          {/* Main intake card — spans 8 cols on desktop, 12 on mobile */}
+          <div className="col-span-12 lg:col-span-8 glass-strong rounded-[22px] shadow-macos-md p-6 sm:p-8 animate-scale-in">
+            <div className="flex items-center gap-2 mb-5">
+              <div className="h-6 w-6 rounded-lg bg-[#0A84FF]/10 flex items-center justify-center">
+                <FileText className="h-3.5 w-3.5 text-[#0A84FF]" />
+              </div>
+              <h2 className="text-base font-semibold tracking-tight">Start your interview</h2>
+            </div>
+
             <div className="grid sm:grid-cols-2 gap-4 mb-5">
               <div className="space-y-1.5">
-                <Label htmlFor="email" className="text-stone-700">
-                  Work email <span className="text-rose-600">*</span>
+                <Label htmlFor="email" className="text-[13px] font-medium text-foreground/80">
+                  Work email <span className="text-[#FF453A]">*</span>
                 </Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="email"
                     type="email"
                     placeholder="advocate@firm.pk"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="pl-9"
+                    className="pl-10 h-11 rounded-xl border-[#D2D2D7] bg-white/70 focus-visible:ring-[#0A84FF]/30 focus-visible:border-[#0A84FF] transition-all"
                     autoComplete="email"
                   />
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-stone-700">
-                  Primary practice area <span className="text-rose-600">*</span>
+                <Label className="text-[13px] font-medium text-foreground/80">
+                  Primary practice area <span className="text-[#FF453A]">*</span>
                 </Label>
                 <Select value={practiceArea} onValueChange={setPracticeArea}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-11 rounded-xl border-[#D2D2D7] bg-white/70">
                     <SelectValue placeholder="Choose your area" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="rounded-xl">
                     {PRACTICE_AREAS.map((area) => (
-                      <SelectItem key={area} value={area}>
+                      <SelectItem key={area} value={area} className="rounded-lg">
                         {area}
                       </SelectItem>
                     ))}
@@ -259,26 +277,28 @@ export function Landing({ onStart }: LandingProps) {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="city" className="text-stone-700">
-                  City <span className="text-muted-foreground text-xs">(optional)</span>
+                <Label htmlFor="city" className="text-[13px] font-medium text-foreground/80">
+                  City <span className="text-muted-foreground text-[11px]">(optional)</span>
                 </Label>
                 <Input
                   id="city"
                   placeholder="Karachi, Lahore, Islamabad…"
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
+                  className="h-11 rounded-xl border-[#D2D2D7] bg-white/70 focus-visible:ring-[#0A84FF]/30 focus-visible:border-[#0A84FF] transition-all"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="years" className="text-stone-700">
-                  Years of practice <span className="text-muted-foreground text-xs">(optional)</span>
+                <Label htmlFor="years" className="text-[13px] font-medium text-foreground/80">
+                  Years of practice <span className="text-muted-foreground text-[11px]">(optional)</span>
                 </Label>
                 <Input
                   id="years"
                   placeholder="e.g. 7"
                   value={yearsOfPractice}
                   onChange={(e) => setYearsOfPractice(e.target.value)}
+                  className="h-11 rounded-xl border-[#D2D2D7] bg-white/70 focus-visible:ring-[#0A84FF]/30 focus-visible:border-[#0A84FF] transition-all"
                 />
               </div>
             </div>
@@ -287,7 +307,7 @@ export function Landing({ onStart }: LandingProps) {
               onClick={submit}
               disabled={submitting}
               size="lg"
-              className="w-full bg-stone-900 hover:bg-stone-800 text-white gap-2 h-12"
+              className="w-full h-12 rounded-xl bg-gradient-to-r from-[#0A84FF] to-[#0A84FF]/90 hover:from-[#0A84FF] hover:to-[#0A84FF] text-white font-medium shadow-macos-sm press-scale transition-all gap-2"
             >
               {submitting ? (
                 <>
@@ -302,65 +322,96 @@ export function Landing({ onStart }: LandingProps) {
               )}
             </Button>
 
-            <p className="text-xs text-muted-foreground text-center mt-3">
-              We auto-save your progress. You can leave and resume anytime.
+            <p className="text-[11px] text-muted-foreground text-center mt-3">
+              Auto-saves as you type. You can leave and resume anytime.
             </p>
           </div>
 
-          {/* What to expect */}
-          <div className="grid sm:grid-cols-3 gap-4 mt-10">
-            <div className="bg-white border border-stone-200 rounded-xl p-4">
-              <Clock className="h-5 w-5 text-stone-700 mb-2" />
-              <div className="font-medium text-stone-900 text-sm">~8 minutes</div>
-              <div className="text-xs text-muted-foreground">One question at a time. No endless scroll.</div>
-            </div>
-            <div className="bg-white border border-stone-200 rounded-xl p-4">
-              <Mic className="h-5 w-5 text-stone-700 mb-2" />
-              <div className="font-medium text-stone-900 text-sm">Voice answers OK</div>
-              <div className="text-xs text-muted-foreground">Tap the mic and talk — Chrome / Safari / Edge.</div>
-            </div>
-            <div className="bg-white border border-stone-200 rounded-xl p-4">
-              <Scale className="h-5 w-5 text-stone-700 mb-2" />
-              <div className="font-medium text-stone-900 text-sm">100% confidential</div>
-              <div className="text-xs text-muted-foreground">No public attribution. Quotes used internally only.</div>
-            </div>
+          {/* Right column — 3 stacked bento cards */}
+          <div className="col-span-12 lg:col-span-4 grid grid-cols-2 lg:grid-cols-1 gap-3 sm:gap-4">
+            <BentoCard
+              icon={<Clock className="h-4 w-4" />}
+              accent="#0A84FF"
+              title="~8 minutes"
+              subtitle="One question at a time. No endless scroll."
+            />
+            <BentoCard
+              icon={<Mic className="h-4 w-4" />}
+              accent="#BF5AF2"
+              title="Voice answers OK"
+              subtitle="Tap the mic and talk — Chrome / Safari / Edge."
+            />
+            <BentoCard
+              icon={<Shield className="h-4 w-4" />}
+              accent="#30D158"
+              title="100% confidential"
+              subtitle="No public attribution. Quotes used internally only."
+            />
           </div>
+        </div>
 
-          {/* Download source code section — for the project owner to grab the ZIP */}
-          <div className="mt-8 bg-stone-900 text-stone-100 rounded-2xl p-6 sm:p-8">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
-              <div className="flex-1">
-                <h2 className="font-serif text-xl mb-1">Download the source code</h2>
-                <p className="text-sm text-stone-300 leading-relaxed">
-                  Get the complete Next.js project as a ZIP — ready to upload to GitHub and deploy to Vercel.
-                  Includes README with step-by-step deploy instructions. 201KB.
-                </p>
-              </div>
-              <a
-                href="/jurivonai-intake.zip"
-                download
-                className="inline-flex items-center justify-center gap-2 h-11 px-6 rounded-lg bg-white text-stone-900 font-medium text-sm hover:bg-stone-100 transition-colors whitespace-nowrap"
-              >
-                <Download className="h-4 w-4" />
-                Download ZIP
-              </a>
-            </div>
-            <div className="mt-4 pt-4 border-t border-stone-700 text-xs text-stone-400">
-              After downloading: unzip on your computer → upload the contents to a new GitHub repo →
-              import to Vercel → set <code className="text-stone-200">DATABASE_URL</code> (Neon Postgres,
-              free) and <code className="text-stone-200">ADMIN_PASSWORD</code> env vars → Deploy.
-              Full instructions in the README inside the ZIP.
-            </div>
-          </div>
-        </section>
+        {/* Stats row — small bento cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+          <StatBento icon={<FileText className="h-4 w-4" />} value="23" label="Deep questions" />
+          <StatBento icon={<TrendingUp className="h-4 w-4" />} value="5" label="Sections" />
+          <StatBento icon={<Mic className="h-4 w-4" />} value="∞" label="Voice minutes" />
+          <StatBento icon={<Shield className="h-4 w-4" />} value="0" label="Public shares" />
+        </div>
       </main>
 
-      <footer className="border-t bg-white mt-auto">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 text-xs text-muted-foreground text-center">
-          JurivonAI · Building legal AI for Pakistani lawyers ·{" "}
-          <a href="#admin" className="underline hover:text-stone-700">Internal</a>
+      <footer className="border-t border-[#D2D2D7]/60 glass mt-auto">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 text-xs text-muted-foreground text-center">
+          JurivonAI · Building legal AI for Pakistani lawyers
         </div>
       </footer>
+    </div>
+  );
+}
+
+function BentoCard({
+  icon,
+  accent,
+  title,
+  subtitle,
+}: {
+  icon: React.ReactNode;
+  accent: string;
+  title: string;
+  subtitle: string;
+}) {
+  return (
+    <div
+      className="glass rounded-[18px] p-4 sm:p-5 hover-lift animate-fade-in"
+      style={{ animationDelay: "100ms" }}
+    >
+      <div
+        className="h-8 w-8 rounded-lg flex items-center justify-center mb-3"
+        style={{ background: `${accent}15`, color: accent }}
+      >
+        {icon}
+      </div>
+      <div className="font-semibold text-[13px] text-foreground mb-0.5">{title}</div>
+      <div className="text-[11px] text-muted-foreground leading-snug">{subtitle}</div>
+    </div>
+  );
+}
+
+function StatBento({
+  icon,
+  value,
+  label,
+}: {
+  icon: React.ReactNode;
+  value: string;
+  label: string;
+}) {
+  return (
+    <div className="glass rounded-2xl p-4 hover-lift">
+      <div className="flex items-center gap-2 mb-1.5 text-muted-foreground">
+        {icon}
+        <span className="text-[10px] uppercase tracking-wider font-medium">{label}</span>
+      </div>
+      <div className="text-2xl font-semibold tabular-nums text-gradient">{value}</div>
     </div>
   );
 }
