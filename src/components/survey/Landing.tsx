@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Mail, Scale, Clock, Mic, ArrowRight, Loader2 } from "lucide-react";
+import { Mail, Scale, Clock, Mic, ArrowRight, Loader2, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -323,6 +323,33 @@ export function Landing({ onStart }: LandingProps) {
               <Scale className="h-5 w-5 text-stone-700 mb-2" />
               <div className="font-medium text-stone-900 text-sm">100% confidential</div>
               <div className="text-xs text-muted-foreground">No public attribution. Quotes used internally only.</div>
+            </div>
+          </div>
+
+          {/* Download source code section — for the project owner to grab the ZIP */}
+          <div className="mt-8 bg-stone-900 text-stone-100 rounded-2xl p-6 sm:p-8">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
+              <div className="flex-1">
+                <h2 className="font-serif text-xl mb-1">Download the source code</h2>
+                <p className="text-sm text-stone-300 leading-relaxed">
+                  Get the complete Next.js project as a ZIP — ready to upload to GitHub and deploy to Vercel.
+                  Includes README with step-by-step deploy instructions. 201KB.
+                </p>
+              </div>
+              <a
+                href="/jurivonai-intake.zip"
+                download
+                className="inline-flex items-center justify-center gap-2 h-11 px-6 rounded-lg bg-white text-stone-900 font-medium text-sm hover:bg-stone-100 transition-colors whitespace-nowrap"
+              >
+                <Download className="h-4 w-4" />
+                Download ZIP
+              </a>
+            </div>
+            <div className="mt-4 pt-4 border-t border-stone-700 text-xs text-stone-400">
+              After downloading: unzip on your computer → upload the contents to a new GitHub repo →
+              import to Vercel → set <code className="text-stone-200">DATABASE_URL</code> (Neon Postgres,
+              free) and <code className="text-stone-200">ADMIN_PASSWORD</code> env vars → Deploy.
+              Full instructions in the README inside the ZIP.
             </div>
           </div>
         </section>
