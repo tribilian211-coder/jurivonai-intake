@@ -1,0 +1,59 @@
+═══════════════════════════════════════════════════════════════════
+   JURIVONAI — START HERE
+═══════════════════════════════════════════════════════════════════
+
+You do NOT need PowerShell, terminal, or any code editor to deploy this.
+You can do everything from your web browser in ~15 minutes.
+
+┌─────────────────────────────────────────────────────────────────┐
+│  THE 4 STEPS (all in your browser):                             │
+│                                                                 │
+│  1. Upload code to GitHub  →  github.com  (drag-drop the files) │
+│  2. Create free database  →  neon.tech     (sign up, copy URL)  │
+│  3. Create the table      →  paste prisma/migration.sql         │
+│  4. Deploy to Vercel      →  vercel.com    (import from GitHub)  │
+│                                                                 │
+│  Full step-by-step instructions: open README.md                 │
+└─────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════
+   ⚠️  IF YOU USED POWERSHELL AND GOT AN ERROR:
+═══════════════════════════════════════════════════════════════════
+
+The error "Could not find Prisma Schema" happens because you ran
+commands from C:\WINDOWS\system32 instead of from inside this folder.
+
+Fix:
+   1. Open PowerShell
+   2. Type:  cd "PUT_THE_PATH_TO_THIS_FOLDER_HERE"
+      (example:  cd "$env:USERPROFILE\Downloads\jurivonai-intake")
+   3. Type:  dir package.json
+      (you should see package.json listed — that means you're in
+       the right folder)
+   4. THEN run:  npx prisma db push
+
+Better yet — skip PowerShell entirely and use the web-only path
+described in README.md. It's faster and there's nothing to install.
+
+═══════════════════════════════════════════════════════════════════
+   WHAT'S IN THIS FOLDER:
+═══════════════════════════════════════════════════════════════════
+
+  README.md              ← open this first — full deploy guide
+  START-HERE.txt         ← this file
+  .env.example           ← template for environment variables
+  .gitignore             ← tells GitHub which files to ignore
+  package.json           ← project dependencies
+  prisma/
+    schema.prisma        ← database schema (PostgreSQL — for production)
+    schema.sqlite.prisma ← alternative schema (SQLite — local dev only)
+    migration.sql        ← SQL to create tables (paste into Neon SQL editor)
+  src/                   ← all the application code
+  public/                ← static files (logo etc.)
+
+═══════════════════════════════════════════════════════════════════
+
+  Need help? Re-read README.md — it has troubleshooting tips at the
+  bottom for the most common errors.
+
+═══════════════════════════════════════════════════════════════════

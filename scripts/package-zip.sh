@@ -30,6 +30,7 @@ INCLUDE=(
   ".env.example"
   ".gitignore"
   "README.md"
+  "START-HERE.txt"
 )
 
 # Copy each item, skipping any that don't exist
@@ -46,10 +47,17 @@ done
 rm -f "$STAGE_DIR/jurivonai-intake/db/"*.db 2>/dev/null || true
 rm -f "$STAGE_DIR/jurivonai-intake/prisma/"*.db 2>/dev/null || true
 
-# Create the ZIP
+# Create the ZIP (exclude the ZIP itself from public/, plus build artifacts)
 cd "$STAGE_DIR"
 rm -f "$OUTPUT_ZIP"
-zip -r "$OUTPUT_ZIP" jurivonai-intake -x "*/node_modules/*" -x "*/.next/*" -x "*/db/*.db" -x "*.log" 2>&1 | tail -5
+zip -r "$OUTPUT_ZIP" jurivonai-intake \
+  -x "*/node_modules/*" \
+  -x "*/.next/*" \
+  -x "*/db/*.db" \
+  -x "*.log" \
+  -x "*/public/jurivonai-intake.zip" \
+  -x "*/public/*.png" \
+  2>&1 | tail -5
 
 # Report
 echo ""
