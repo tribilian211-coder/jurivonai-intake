@@ -44,3 +44,15 @@ download/
 
 # Vercel
 .vercel
+
+# Sandbox dev artifacts (should never be deployed)
+.zscripts/
+skills/
+examples/
+mini-services/
+Caddyfile
+next-env.d.ts
+.env
+db/
+download/
+scripts/
