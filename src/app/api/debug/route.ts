@@ -19,6 +19,12 @@ export async function GET() {
       ? process.env.DATABASE_URL.includes("-pooler")
       : false,
     hasAdminPassword: !!process.env.ADMIN_PASSWORD,
+    // Show password length and first 2 + last 2 chars so you can identify it
+    // without exposing the full password
+    adminPasswordLength: process.env.ADMIN_PASSWORD?.length || 0,
+    adminPasswordHint: process.env.ADMIN_PASSWORD
+      ? `${process.env.ADMIN_PASSWORD.substring(0, 2)}...${process.env.ADMIN_PASSWORD.substring(process.env.ADMIN_PASSWORD.length - 2)}`
+      : "NOT SET",
   };
 
   // Test 1: Can we instantiate the Prisma client at all?
@@ -58,6 +64,25 @@ export async function GET() {
   } catch (err) {
     diagnostics.tableExists = false;
     diagnostics.tableError = err instanceof Error ? err.message : String(err);
+  }
+
+  // Test 4: List all responses (so we can see what's actually in the DB)
+  try {
+    const responses = await db.response.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 10,
+      select: {
+        id: true,
+        email: true,
+        practiceArea: true,
+        started: true,
+        completed: true,
+        createdAt: true,
+      },
+    });
+    diagnostics.recentResponses = responses;
+  } catch (err) {
+    diagnostics.recentResponsesError = err instanceof Error ? err.message : String(err);
   }
 
   return NextResponse.json(diagnostics, { status: 200 });
