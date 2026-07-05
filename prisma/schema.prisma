@@ -6,7 +6,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  // PostgreSQL — works on Vercel + Neon (free).
+  // For local SQLite dev, see schema.sqlite.prisma and switch provider + url.
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 

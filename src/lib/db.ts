@@ -14,50 +14,47 @@ export const db =
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = db;
 
-// ─── SQLite concurrency hardening ────────────────────────────────────────────
-// These PRAGMAs make SQLite safe under concurrent load:
-//   • WAL mode       — readers never block writers; writers don't block readers
-//   • busy_timeout   — wait up to 5s for a lock instead of throwing immediately
-//   • synchronous=NORMAL — safe with WAL, much faster than FULL
+// ─── Database concurrency hardening ──────────────────────────────────────────
+// SQLite-only PRAGMAs. On PostgreSQL (Vercel/Neon), these are skipped — Postgres
+// handles concurrency natively with MVCC, no PRAGMA tuning needed.
 //
-// With these set, SQLite comfortably handles hundreds of concurrent form
-// submissions. For >1000 concurrent writers, switch DATABASE_URL to Neon
-// Postgres (still $0 free tier) — no code changes needed beyond the URL.
+// SQLite: WAL mode lets readers not block writers; busy_timeout waits 5s for a
+// lock instead of throwing; synchronous=NORMAL is safe with WAL and much faster.
 //
-// We run these once at module init (server start). They persist for the
-// lifetime of the database file, not just the connection.
+// We detect SQLite by checking the DATABASE_URL scheme (file: = SQLite).
+const isSQLite =
+  typeof process !== "undefined" &&
+  process.env.DATABASE_URL &&
+  process.env.DATABASE_URL.startsWith("file:");
+
 const pragmaPromise = (async () => {
+  if (!isSQLite) return; // skip on Postgres
   try {
     await db.$executeRawUnsafe("PRAGMA journal_mode = WAL;");
     await db.$executeRawUnsafe("PRAGMA busy_timeout = 5000;");
     await db.$executeRawUnsafe("PRAGMA synchronous = NORMAL;");
   } catch (err) {
-    // Non-fatal — SQLite still works without these, just less concurrently safe
     console.warn("[db] pragma setup failed:", err);
   }
 })();
 
-// Helper: retry a Prisma write op on lock errors (SQLite WAL mostly makes this
-// unnecessary, but it's the belt to busy_timeout's suspenders).
-// Use for writes that must succeed (lead creation, answer saves).
+// Helper: retry a Prisma write op on lock errors (SQLite only).
+// On Postgres, this is a pass-through (no lock errors possible with MVCC).
 export async function withWriteRetry<T>(
   fn: () => Promise<T>,
   maxRetries = 3
 ): Promise<T> {
-  await pragmaPromise; // ensure pragmas ran first
+  await pragmaPromise;
   let lastErr: unknown;
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
       return await fn();
     } catch (err) {
       lastErr = err;
-      // SQLite "database is locked" (code 5) or Prisma's transaction timeout
       const isLockError =
         err instanceof Prisma.PrismaClientKnownRequestError &&
-        (err.code === "P2024" || // transaction failed
-          err.code === "P2034"); // transaction conflict
+        (err.code === "P2024" || err.code === "P2034");
       if (!isLockError) throw err;
-      // Exponential backoff: 50ms, 150ms, 450ms
       await new Promise((r) => setTimeout(r, 50 * Math.pow(3, attempt)));
     }
   }

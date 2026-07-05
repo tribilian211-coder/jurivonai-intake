@@ -1,0 +1,47 @@
+// SQLite version of the schema — for LOCAL DEVELOPMENT ONLY.
+// Vercel's serverless filesystem is read-only, so SQLite won't persist there.
+// To use locally:
+//   1. Replace prisma/schema.prisma with this file's contents
+//   2. Set DATABASE_URL="file:./db/custom.db" in .env
+//   3. Run `bun run db:push`
+//
+// For production (Vercel), use the default schema.prisma (PostgreSQL + Neon).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Response {
+  id              String    @id @default(cuid())
+  email           String
+  practiceArea    String?
+  city            String?
+  yearsOfPractice String?
+  barNumber       String?
+
+  started         Boolean   @default(false)
+  completed       Boolean   @default(false)
+  completedAt     DateTime?
+
+  answers         String    @default("{}")
+
+  currentSection  Int       @default(1)
+  currentQuestion Int       @default(0)
+
+  flagged         Boolean   @default(false)
+  notes           String?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([email])
+  @@index([practiceArea])
+  @@index([completed])
+  @@index([started])
+  @@index([createdAt])
+}
