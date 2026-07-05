@@ -24,27 +24,69 @@ A zero-cost, Typeform-style survey tool that captures 23 deep-dive questions fro
 
 ---
 
-## 🚀 DEPLOY — Web-only path (RECOMMENDED, no terminal needed)
+## 🚀 DEPLOY — 3 steps, ~15 minutes
 
-**You do NOT need PowerShell, npm, node, or any terminal.** Do everything from your browser. Total time: ~15 minutes.
+**⚠️ Critical warning:** GitHub's web upload (`github.com → Add file → Upload files`) **does NOT properly upload folders** like `src/`, `prisma/`, and `public/`. If you drag-dropped files into GitHub's website, your repo is missing the actual application code and the deploy will fail silently (Vercel says "Ready" but the app is empty).
 
-### Step 1 — Upload code to GitHub (5 min)
+Use one of the two methods below to get your code onto GitHub. Both handle folders correctly.
 
-1. **Unzip** `jurivonai-intake.zip` on your computer. You get a folder called `jurivonai-intake`.
-2. Go to [github.com](https://github.com) → sign in (or create a free account)
-3. Click the **+** icon (top right) → **New repository**
-4. Repository name: `jurivonai-intake`
-5. Set to **Private** (recommended)
-6. **DO NOT** check any "Initialize" boxes (no README, no .gitignore, no license — the ZIP already has them)
-7. Click **Create repository**
-8. On the next page, click **"uploading an existing file"** (a link in the middle of the page)
-9. **Open** the unzipped `jurivonai-intake` folder on your computer
-10. **Select ALL files and folders inside it** (press Ctrl+A inside the folder) — but NOT the `jurivonai-intake` folder itself
-11. **Drag them** into GitHub's upload area (the one that says "Drag files here")
-12. Wait until all files finish uploading (you'll see the file list populate)
-13. Scroll to the bottom → click **Commit changes**
+---
 
-✅ You now have your code on GitHub.
+### Step 1 — Get your code onto GitHub (choose ONE method)
+
+#### Method A: GitHub Desktop (RECOMMENDED — easiest, no terminal)
+
+GitHub Desktop is a free official app from GitHub. It handles folders properly and works entirely through a GUI.
+
+1. Download GitHub Desktop from [desktop.github.com](https://desktop.github.com) → install it
+2. Open it → sign in with your GitHub account
+3. Click **File** → **New Repository**
+4. Fill in:
+   - **Name:** `jurivonai-intake`
+   - **Local path:** click **Choose…** → select the unzipped `jurivonai-intake` folder (the one containing `START-HERE.txt`)
+   - **Git ignore:** None
+   - **License:** None
+5. Click **Create repository**
+6. On the left side, you'll see a list of all changed files — **verify you see `src/`, `prisma/`, and `public/` folders listed** (if you only see top-level files, you selected the wrong folder)
+7. In the **Summary** box at the bottom, type: `Initial commit`
+8. Click **Commit to main**
+9. Click **Publish repository** (top right, blue button)
+10. In the popup: keep the name `jurivonai-intake`, make sure your account is selected, **uncheck** "Keep this code private" if you want it public (or leave it checked for private)
+11. Click **Publish repository**
+12. ✅ Done — all files AND folders are now on GitHub. Continue to Step 2.
+
+#### Method B: PowerShell script (if you already have Git installed)
+
+**Pre-requisite:** Install Git from [git-scm.com/download/win](https://git-scm.com/download/win)
+
+1. Create an **EMPTY** repo on GitHub:
+   - Go to [github.com/new](https://github.com/new)
+   - Repository name: `jurivonai-intake`
+   - **DO NOT** check any "Initialize" boxes (no README, no .gitignore, no license)
+   - Click **Create repository**
+   - On the next page, copy the repo URL (looks like `https://github.com/your-username/jurivonai-intake.git`)
+
+2. In the unzipped `jurivonai-intake` folder, find the file `deploy-to-github.ps1`
+
+3. **Right-click** it → **Run with PowerShell**
+
+4. When prompted, paste your GitHub repo URL and press Enter
+
+5. The script will:
+   - Initialize git
+   - Add ALL files and folders (including `src/`, `prisma/`, `public/`)
+   - Commit them
+   - Push them to your GitHub repo
+
+6. If a GitHub sign-in window pops up, sign in to authorize Git
+
+7. ✅ Done — all files are now on GitHub. Continue to Step 2.
+
+#### ❌ What NOT to do
+
+**Do NOT use GitHub's web upload** (drag-dropping files into `github.com/your-username/your-repo/upload/main`). It will only upload the top-level files and skip the `src/`, `prisma/`, and `public/` folders — your deploy will fail silently. If you already did this, delete that repo and use Method A or B above instead.
+
+---
 
 ### Step 2 — Create a free Postgres database (3 min)
 
@@ -107,6 +149,14 @@ In your Vercel project → **Settings** → **Domains** → add `intake.jurivon.
 
 ## ⚠️ Common issues
 
+### "Vercel says Ready but the site is empty / admin dashboard errors out"
+
+**Your GitHub repo is missing the `src/`, `prisma/`, and `public/` folders.** This happens when you used GitHub's web upload (drag-dropping files into the GitHub website) — it skips folders.
+
+To check: go to your GitHub repo → look at the file list. If you only see files like `package.json`, `README.md`, etc. but NO `src/` folder, that's the problem.
+
+**Fix:** Delete that repo and use **GitHub Desktop** (Method A in Step 1 above) or the **PowerShell script** (Method B) to re-upload. Both handle folders correctly. After re-uploading, Vercel will auto-redeploy with the full code.
+
 ### "I tried the Vercel CLI and got an error about Prisma schema not found"
 
 **You're running commands from the wrong folder.** You must `cd` into the unzipped `jurivonai-intake` folder BEFORE running any commands. If your prompt shows `C:\WINDOWS\system32>` you're in the wrong place.
@@ -123,7 +173,7 @@ dir package.json
 npx prisma db push
 ```
 
-**Better yet:** skip the CLI entirely and use the web-only path above. You only need the CLI if you want to run the project locally on your own machine for testing.
+**Better yet:** skip the CLI entirely and use the deploy steps above. You only need the CLI if you want to run the project locally on your own machine for testing.
 
 ### "Database connection failed" on Vercel
 

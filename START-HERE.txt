@@ -2,58 +2,105 @@
    JURIVONAI — START HERE
 ═══════════════════════════════════════════════════════════════════
 
-You do NOT need PowerShell, terminal, or any code editor to deploy this.
-You can do everything from your web browser in ~15 minutes.
+  ⚠️  IMPORTANT: GitHub's web upload DOES NOT properly upload
+  folders like src/, prisma/, and public/. If you drag-dropped
+  files into GitHub's website, your repo is MISSING the actual
+  application code — and the deploy will fail.
 
-┌─────────────────────────────────────────────────────────────────┐
-│  THE 4 STEPS (all in your browser):                             │
-│                                                                 │
-│  1. Upload code to GitHub  →  github.com  (drag-drop the files) │
-│  2. Create free database  →  neon.tech     (sign up, copy URL)  │
-│  3. Create the table      →  paste prisma/migration.sql         │
-│  4. Deploy to Vercel      →  vercel.com    (import from GitHub)  │
-│                                                                 │
-│  Full step-by-step instructions: open README.md                 │
-└─────────────────────────────────────────────────────────────────┘
+  Use ONE of the two methods below instead. Both are free and
+  take ~5 minutes.
 
 ═══════════════════════════════════════════════════════════════════
-   ⚠️  IF YOU USED POWERSHELL AND GOT AN ERROR:
+  METHOD 1 — GitHub Desktop (EASIEST, recommended for non-coders)
 ═══════════════════════════════════════════════════════════════════
 
-The error "Could not find Prisma Schema" happens because you ran
-commands from C:\WINDOWS\system32 instead of from inside this folder.
-
-Fix:
-   1. Open PowerShell
-   2. Type:  cd "PUT_THE_PATH_TO_THIS_FOLDER_HERE"
-      (example:  cd "$env:USERPROFILE\Downloads\jurivonai-intake")
-   3. Type:  dir package.json
-      (you should see package.json listed — that means you're in
-       the right folder)
-   4. THEN run:  npx prisma db push
-
-Better yet — skip PowerShell entirely and use the web-only path
-described in README.md. It's faster and there's nothing to install.
+  1. Download GitHub Desktop from: desktop.github.com (free)
+  2. Install it, sign in with your GitHub account
+  3. Click "File" → "New Repository"
+  4. Name: jurivonai-intake
+  5. Local path: click "Choose" → select THIS folder
+     (the one containing START-HERE.txt)
+  6. Click "Create repository"
+  7. You'll see a list of all files on the left — verify you see
+     src/, prisma/, and public/ folders listed
+  8. In the "Summary" box at bottom, type: "Initial commit"
+  9. Click "Commit to main"
+ 10. Click "Publish repository" (top right)
+ 11. Choose your GitHub account, keep the name "jurivonai-intake"
+ 12. Click "Publish repository"
+ 13. Done! All files AND folders are now on GitHub.
 
 ═══════════════════════════════════════════════════════════════════
-   WHAT'S IN THIS FOLDER:
+  METHOD 2 — PowerShell script (no extra software beyond Git)
 ═══════════════════════════════════════════════════════════════════
 
-  README.md              ← open this first — full deploy guide
+  Pre-requisite: install Git from https://git-scm.com/download/win
+
+  1. Create an EMPTY repo on GitHub:
+     - Go to github.com → click + → New repository
+     - Name: jurivonai-intake
+     - DO NOT check any "Initialize" boxes (no README, no license)
+     - Click "Create repository"
+     - Copy the repo URL (looks like:
+       https://github.com/your-username/jurivonai-intake.git)
+
+  2. In THIS folder (where START-HERE.txt lives), find the file:
+        deploy-to-github.ps1
+
+  3. Right-click it → "Run with PowerShell"
+
+  4. When prompted, paste your GitHub repo URL and press Enter
+
+  5. The script will upload ALL files and folders (src/, prisma/,
+     public/, etc.) to GitHub automatically.
+
+  6. If a GitHub login window pops up, sign in to authorize Git.
+
+═══════════════════════════════════════════════════════════════════
+  AFTER YOUR CODE IS ON GITHUB — Deploy to Vercel
+═══════════════════════════════════════════════════════════════════
+
+  1. Create free database: neon.tech → sign up → copy the
+     "Connection string" (starts with postgresql://...)
+
+  2. Create the table: in Neon → SQL Editor → New query →
+     paste the contents of prisma/migration.sql → click Run
+
+  3. Deploy: vercel.com → sign up with GitHub → "Add New" →
+     "Project" → import "jurivonai-intake" → expand "Environment
+     Variables" → add:
+        DATABASE_URL       = (your Neon connection string)
+        ADMIN_PASSWORD     = (pick a strong password)
+     → click Deploy → wait 2 minutes → click Visit
+
+  4. Test: open your Vercel URL → type a test email → click
+     "Begin interview" → answer a few questions
+
+  5. Admin dashboard: add #admin to your URL
+     (e.g. https://your-app.vercel.app/#admin)
+     Enter the ADMIN_PASSWORD you set in step 3.
+
+═══════════════════════════════════════════════════════════════════
+  WHAT'S IN THIS FOLDER:
+═══════════════════════════════════════════════════════════════════
+
+  README.md              ← full step-by-step guide with screenshots
   START-HERE.txt         ← this file
+  deploy-to-github.ps1   ← PowerShell script (Method 2)
   .env.example           ← template for environment variables
   .gitignore             ← tells GitHub which files to ignore
   package.json           ← project dependencies
   prisma/
-    schema.prisma        ← database schema (PostgreSQL — for production)
-    schema.sqlite.prisma ← alternative schema (SQLite — local dev only)
-    migration.sql        ← SQL to create tables (paste into Neon SQL editor)
-  src/                   ← all the application code
+    schema.prisma        ← database schema (PostgreSQL — production)
+    schema.sqlite.prisma ← alternative (SQLite — local dev only)
+    migration.sql        ← SQL to create tables (paste into Neon)
+  src/                   ← all the application code (CRITICAL)
   public/                ← static files (logo etc.)
 
 ═══════════════════════════════════════════════════════════════════
 
-  Need help? Re-read README.md — it has troubleshooting tips at the
-  bottom for the most common errors.
+  Need help? Open README.md for the full guide with troubleshooting.
+  The most common issue is GitHub web upload missing folders —
+  use Method 1 or 2 above to fix it.
 
 ═══════════════════════════════════════════════════════════════════

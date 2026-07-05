@@ -31,6 +31,7 @@ INCLUDE=(
   ".gitignore"
   "README.md"
   "START-HERE.txt"
+  "deploy-to-github.ps1"
 )
 
 # Copy each item, skipping any that don't exist
